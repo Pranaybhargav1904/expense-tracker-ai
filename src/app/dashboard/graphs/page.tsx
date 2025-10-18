@@ -8,7 +8,12 @@ import { useAuth } from '../../lib/AuthContext';
 export default function GraphsPage() {
   const { user, loading, logout } = useAuth();
   const router = useRouter();
-  const [expenses, setExpenses] = useState<any[]>([]);
+  const [expenses, setExpenses] = useState<Array<{
+    id: string;
+    amount: number;
+    category: string;
+    date: string;
+  }>>([]);
   const [loadingExpenses, setLoadingExpenses] = useState(true);
 
   useEffect(() => {

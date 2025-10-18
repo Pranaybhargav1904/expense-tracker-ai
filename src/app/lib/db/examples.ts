@@ -3,6 +3,8 @@
  * This file demonstrates common usage patterns for all tables
  */
 
+/* eslint-disable @typescript-eslint/no-unused-vars */
+
 import {
   // Users
   getAllUsers,

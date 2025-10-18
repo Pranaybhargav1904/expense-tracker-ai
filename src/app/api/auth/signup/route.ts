@@ -5,7 +5,8 @@ import { createUser } from '@/app/lib/db';
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    let { email, password, fullName } = body;
+    const { password } = body;
+    let { email, fullName } = body;
 
     // Trim whitespace from email
     email = email?.trim();
