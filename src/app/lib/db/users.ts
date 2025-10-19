@@ -48,6 +48,27 @@ export async function createUser(user: UserInsert) {
   return data as User;
 }
 
+// Ensure user exists in users table (upsert)
+export async function ensureUserExists(userId: string, email?: string, name?: string) {
+  try {
+    // First, try to get the user
+    const existing = await getUserById(userId);
+    return existing;
+  } catch {
+    // User doesn't exist, create it
+    try {
+      return await createUser({
+        id: userId,
+        email: email || null,
+        name: name || null,
+      });
+    } catch (createError) {
+      console.error('Failed to create user:', createError);
+      throw createError;
+    }
+  }
+}
+
 // Update a user
 export async function updateUser(id: string, updates: UserUpdate) {
   const { data, error } = await supabase

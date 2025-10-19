@@ -33,7 +33,7 @@ export interface AIQuery {
 }
 
 // Insert types (without auto-generated fields)
-export type UserInsert = Omit<User, 'id' | 'created_at'>;
+export type UserInsert = Partial<Omit<User, 'created_at'>> & { email: string | null; name: string | null }; // id is optional, can be set for Supabase Auth sync
 export type CategoryInsert = Omit<Category, 'id' | 'created_at'>;
 export type ExpenseInsert = Omit<Expense, 'id' | 'created_at'>;
 export type AIQueryInsert = Omit<AIQuery, 'id' | 'created_at'>;

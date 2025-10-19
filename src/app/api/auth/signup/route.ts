@@ -65,15 +65,17 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Create user in our users table
+    // Create user in our users table with the same ID as auth user
     try {
       await createUser({
+        id: authData.user.id, // Use the auth user's ID
         name: fullName,
         email: email,
       });
     } catch (dbError) {
-      console.error('Database error:', dbError);
+      console.error('Database error creating user in users table:', dbError);
       // Note: Auth user is already created, so we log but don't fail
+      // The user can still login, but some features might not work until user is in DB
     }
 
     return NextResponse.json(

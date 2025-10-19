@@ -4,6 +4,8 @@ import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { useAuth } from '../lib/AuthContext';
+import UserDebugInfo from './components/UserDebugInfo';
+import ExpensesList from './components/ExpensesList';
 
 export default function DashboardPage() {
   const { user, loading, logout } = useAuth();
@@ -22,6 +24,8 @@ export default function DashboardPage() {
     { text: "Hi! I'm your expense assistant. How can I help you today?", sender: 'bot' }
   ]);
   const [chatInput, setChatInput] = useState('');
+  const [isChatLoading, setIsChatLoading] = useState(false);
+  const [currentExpenses, setCurrentExpenses] = useState<any[]>([]);
 
   useEffect(() => {
     if (!loading && !user) {
@@ -47,35 +51,122 @@ export default function DashboardPage() {
 
   const handleExpenseSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    // TODO: Implement expense submission
-    console.log('Expense submitted:', expenseForm);
-    alert('Expense added successfully!');
-    // Reset form
-    setExpenseForm({
-      category: '',
-      amount: '',
-      paymentMethod: '',
-      description: '',
-      date: new Date().toISOString().split('T')[0],
-    });
+    
+    if (!user?.id) {
+      alert('Error: User not logged in');
+      return;
+    }
+
+    try {
+      // Submit expense to API
+      // Use the date string directly from the input (already in YYYY-MM-DD format)
+      const response = await fetch('/api/expenses', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          user_id: user.id,
+          amount: parseFloat(expenseForm.amount),
+          description: `${expenseForm.category} - ${expenseForm.description || 'No description'}`,
+          date: expenseForm.date, // Use date string directly - no timezone conversion needed
+          category_id: null, // You can add category mapping later
+        }),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Failed to add expense');
+      }
+
+      const newExpense = await response.json();
+      console.log('Expense added:', newExpense);
+      
+      alert('✅ Expense added successfully!');
+      
+      // Reset form
+      setExpenseForm({
+        category: '',
+        amount: '',
+        paymentMethod: '',
+        description: '',
+        date: new Date().toISOString().split('T')[0],
+      });
+
+      // Trigger refresh of expenses list if it's open
+      setCurrentExpenses([]); // This will trigger a refresh
+      
+    } catch (error) {
+      console.error('Error adding expense:', error);
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+      alert(`❌ Failed to add expense: ${errorMessage}`);
+    }
   };
 
-  const handleChatSubmit = (e: React.FormEvent) => {
+  const handleChatSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!chatInput.trim()) return;
+    if (!chatInput.trim() || isChatLoading) return;
+    
+    const userMessage = chatInput.trim();
     
     // Add user message
-    setChatMessages([...chatMessages, { text: chatInput, sender: 'user' }]);
+    setChatMessages(prev => [...prev, { text: userMessage, sender: 'user' }]);
+    setChatInput('');
+    setIsChatLoading(true);
     
-    // Simulate bot response
-    setTimeout(() => {
+    try {
+      // Prepare conversation history for API
+      const conversationHistory = chatMessages
+        .filter(msg => msg.sender !== 'bot' || msg.text !== "Hi! I'm your expense assistant. How can I help you today?")
+        .map(msg => ({
+          role: msg.sender === 'user' ? 'user' : 'assistant',
+          content: msg.text
+        }));
+
+      // Add expense context if available
+      let enhancedMessage = userMessage;
+      if (currentExpenses.length > 0) {
+        const expenseContext = `\n\nCurrent expenses visible on page:\n${currentExpenses.map((exp, i) => 
+          `${i + 1}. $${exp.amount} - ${exp.description || 'No description'} (${exp.date})`
+        ).join('\n')}`;
+        enhancedMessage = userMessage + expenseContext;
+      }
+
+      const response = await fetch('/api/chat', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          userId: user?.id,
+          message: enhancedMessage,
+          conversationHistory,
+        }),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Failed to get response');
+      }
+
+      const data = await response.json();
+      
+      // Add bot response
       setChatMessages(prev => [...prev, { 
-        text: "I'm a chatbot UI design. Integration coming soon!", 
+        text: data.response, 
         sender: 'bot' 
       }]);
-    }, 500);
-    
-    setChatInput('');
+      
+    } catch (error) {
+      console.error('Chat error:', error);
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+      setChatMessages(prev => [...prev, { 
+        text: `Sorry, I encountered an error: ${errorMessage}. Please make sure your Groq API key is configured.`, 
+        sender: 'bot' 
+      }]);
+    } finally {
+      setIsChatLoading(false);
+    }
   };
 
   if (loading) {
@@ -230,6 +321,14 @@ export default function DashboardPage() {
             </div>
           </form>
 
+          {/* Expenses List Section */}
+          <div className="mt-12">
+            <ExpensesList 
+              userId={user?.id} 
+              onExpensesLoaded={(expenses) => setCurrentExpenses(expenses)}
+            />
+          </div>
+
           {/* Rating Section */}
           <div className="mt-12 pt-8 border-t-2 border-gray-200 dark:border-gray-700">
             <p className="text-center text-gray-700 dark:text-gray-300 font-semibold mb-4">
@@ -306,6 +405,17 @@ export default function DashboardPage() {
                 </div>
               </div>
             ))}
+            {isChatLoading && (
+              <div className="flex justify-start">
+                <div className="bg-white dark:bg-gray-700 px-4 py-2 rounded-2xl border border-gray-200 dark:border-gray-600 rounded-bl-none">
+                  <div className="flex space-x-2">
+                    <div className="w-2 h-2 bg-purple-600 rounded-full animate-bounce"></div>
+                    <div className="w-2 h-2 bg-purple-600 rounded-full animate-bounce" style={{animationDelay: '0.1s'}}></div>
+                    <div className="w-2 h-2 bg-purple-600 rounded-full animate-bounce" style={{animationDelay: '0.2s'}}></div>
+                  </div>
+                </div>
+              </div>
+            )}
           </div>
 
           {/* Chat Input */}
@@ -316,11 +426,13 @@ export default function DashboardPage() {
                 value={chatInput}
                 onChange={(e) => setChatInput(e.target.value)}
                 placeholder="Type your message..."
-                className="flex-1 px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-full focus:ring-2 focus:ring-purple-500 focus:border-purple-500 dark:bg-gray-700 dark:text-white text-sm"
+                disabled={isChatLoading}
+                className="flex-1 px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-full focus:ring-2 focus:ring-purple-500 focus:border-purple-500 dark:bg-gray-700 dark:text-white text-sm disabled:opacity-50 disabled:cursor-not-allowed"
               />
               <button
                 type="submit"
-                className="px-4 py-2 bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700 text-white rounded-full transition-all duration-200 transform hover:scale-105"
+                disabled={isChatLoading || !chatInput.trim()}
+                className="px-4 py-2 bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700 text-white rounded-full transition-all duration-200 transform hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none"
               >
                 <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" />
@@ -330,6 +442,9 @@ export default function DashboardPage() {
           </form>
         </div>
       )}
+
+      {/* Debug Info Component */}
+      <UserDebugInfo userId={user?.id} />
     </div>
   );
 }
