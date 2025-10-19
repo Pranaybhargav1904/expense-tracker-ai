@@ -6,9 +6,16 @@ interface UserDebugInfoProps {
   userId: string | undefined;
 }
 
+interface DebugData {
+  currentUserId: string;
+  totalExpenses: number;
+  userExpenses: Array<{id: string; amount: number; description: string; user_id: string}> | null;
+  allExpenses: Array<{id: string; amount: number; description: string; user_id: string}>;
+}
+
 export default function UserDebugInfo({ userId }: UserDebugInfoProps) {
   const [showDebug, setShowDebug] = useState(false);
-  const [debugData, setDebugData] = useState<any>(null);
+  const [debugData, setDebugData] = useState<DebugData | null>(null);
   const [loading, setLoading] = useState(false);
 
   const fetchDebugInfo = async () => {
@@ -74,7 +81,7 @@ export default function UserDebugInfo({ userId }: UserDebugInfoProps) {
               </p>
               {debugData.userExpenses && debugData.userExpenses.length > 0 ? (
                 <ul className="mt-2 space-y-1">
-                  {debugData.userExpenses.map((exp: any) => (
+                  {debugData.userExpenses.map((exp) => (
                     <li key={exp.id} className="text-gray-600 dark:text-gray-400">
                       ${exp.amount} - {exp.description || 'No description'}
                     </li>
@@ -91,7 +98,7 @@ export default function UserDebugInfo({ userId }: UserDebugInfoProps) {
               <div>
                 <p className="font-semibold text-gray-900 dark:text-white">All Expenses (by user_id):</p>
                 <ul className="mt-2 space-y-1">
-                  {debugData.allExpenses.map((exp: any) => (
+                  {debugData.allExpenses.map((exp) => (
                     <li key={exp.id} className="text-gray-600 dark:text-gray-400">
                       <span className={exp.user_id === userId ? 'text-green-600 font-bold' : ''}>
                         User: {exp.user_id.substring(0, 8)}...

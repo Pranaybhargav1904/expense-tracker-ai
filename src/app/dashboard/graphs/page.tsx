@@ -36,7 +36,7 @@ export default function GraphsPage() {
         const data = await response.json();
         
         // Transform data to match expected format
-        const transformedExpenses = data.map((exp: any) => ({
+        const transformedExpenses = data.map((exp: {id: string; amount: number; description: string; date: string}) => ({
           id: exp.id,
           amount: Number(exp.amount),
           category: exp.description?.split(' - ')[0] || 'Other',
@@ -202,7 +202,7 @@ export default function GraphsPage() {
                 Recent Expenses
               </h3>
               <div className="space-y-3 max-h-64 overflow-y-auto">
-                {expenses.slice(0, 8).map((exp, index) => (
+                {expenses.slice(0, 8).map((exp) => (
                   <div key={exp.id} className="flex justify-between items-center p-3 bg-gray-50 dark:bg-gray-700 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-600 transition-colors">
                     <div>
                       <p className="font-medium text-gray-900 dark:text-white">{exp.category}</p>

@@ -109,14 +109,19 @@ export async function executeMCPTool(toolName: string, args: {userId: string; st
       case 'get_expense_summary': {
         const summary = await getExpensesSummaryByCategory(args.userId);
         // Group and sum by category
-        const grouped = summary.reduce((acc: Record<string, number>, item: {amount: number; categories: {name: string} | null}) => {
-          const categoryName = item.categories?.name || 'Uncategorized';
+        const initialValue: Record<string, number> = {};
+        const grouped = summary.reduce((acc, item) => {
+          // Handle both object and array responses from Supabase
+          const categories = item.categories as unknown;
+          const categoryName = (categories && typeof categories === 'object' && 'name' in categories) 
+            ? (categories as {name: string}).name 
+            : 'Uncategorized';
           if (!acc[categoryName]) {
             acc[categoryName] = 0;
           }
           acc[categoryName] += Number(item.amount);
           return acc;
-        }, {} as Record<string, number>);
+        }, initialValue);
         return grouped;
       }
       

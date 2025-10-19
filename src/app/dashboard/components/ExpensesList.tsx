@@ -12,9 +12,16 @@ interface Expense {
   created_at: string;
 }
 
+interface SimplifiedExpense {
+  id: string;
+  amount: number;
+  description: string;
+  date: string;
+}
+
 interface ExpensesListProps {
   userId: string | undefined;
-  onExpensesLoaded?: (expenses: Expense[]) => void;
+  onExpensesLoaded?: (expenses: SimplifiedExpense[]) => void;
 }
 
 export default function ExpensesList({ userId, onExpensesLoaded }: ExpensesListProps) {
@@ -41,9 +48,15 @@ export default function ExpensesList({ userId, onExpensesLoaded }: ExpensesListP
       const data = await response.json();
       setExpenses(data);
       
-      // Notify parent component
+      // Notify parent component with simplified data
       if (onExpensesLoaded) {
-        onExpensesLoaded(data);
+        const simplifiedData: SimplifiedExpense[] = data.map((exp: Expense) => ({
+          id: exp.id,
+          amount: exp.amount,
+          description: exp.description || 'No description',
+          date: exp.date
+        }));
+        onExpensesLoaded(simplifiedData);
       }
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Unknown error';
@@ -57,6 +70,7 @@ export default function ExpensesList({ userId, onExpensesLoaded }: ExpensesListP
     if (isOpen && userId) {
       fetchExpenses();
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isOpen, userId]);
 
   const formatDate = (dateString: string) => {

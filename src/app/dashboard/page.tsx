@@ -25,7 +25,7 @@ export default function DashboardPage() {
   ]);
   const [chatInput, setChatInput] = useState('');
   const [isChatLoading, setIsChatLoading] = useState(false);
-  const [currentExpenses, setCurrentExpenses] = useState<any[]>([]);
+  const [currentExpenses, setCurrentExpenses] = useState<Array<{id: string; amount: number; description: string; date: string}>>([]);
 
   useEffect(() => {
     if (!loading && !user) {
